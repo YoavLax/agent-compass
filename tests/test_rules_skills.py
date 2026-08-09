@@ -298,8 +298,38 @@ def test_unknown_fields_accepts_current_schema(tmp_path):
 def test_unknown_fields_still_flags_real_typo(tmp_path):
     doc = _doc(
         tmp_path, "reviewer",
-        "name: reviewer\ndescription: Reviews diffs when asked.\nbogus-field: 1",
+        "name: reviewer\ndescriptoin: Reviews diffs when asked.",
     )
     sat, diags = rules.check_unknown_fields(doc)
     assert sat == 0.0
-    assert "bogus-field" in diags[0].message
+    assert diags[0].severity == Severity.WARNING
+    assert "descriptoin" in diags[0].message
+    assert "description" in diags[0].message
+
+
+def test_unknown_fields_flags_case_and_separator_variants(tmp_path):
+    """A field the loader will not see because it is spelled with the wrong
+    case or separator is a certain miss, not a near one."""
+    doc = _doc(
+        tmp_path, "reviewer",
+        "name: reviewer\ndescription: Reviews diffs when asked.\nWhen_To_Use: On a PR.",
+    )
+    sat, diags = rules.check_unknown_fields(doc)
+    assert sat == 0.0
+    assert "when_to_use" in diags[0].message
+
+
+def test_unknown_fields_reports_extension_keys_without_scoring_them(tmp_path):
+    """Deliberate extension keys are ignored by loaders exactly as intended, so
+    they are reported once per file at INFO and do not fail the skill."""
+    doc = _doc(
+        tmp_path, "reviewer",
+        "name: reviewer\ndescription: Reviews diffs when asked.\n"
+        "mytool-model: some-model\nmytool-effort: high\nstage: review",
+    )
+    sat, diags = rules.check_unknown_fields(doc)
+    assert sat == 1.0
+    assert len(diags) == 1
+    assert diags[0].severity == Severity.INFO
+    for field in ("mytool-model", "mytool-effort", "stage"):
+        assert f"'{field}'" in diags[0].message

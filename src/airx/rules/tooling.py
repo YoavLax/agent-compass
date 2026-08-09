@@ -332,10 +332,12 @@ def check_env_example(index: ArtifactIndex):
     applicability=Applicability.QUALITY, weight=3, severity=Severity.INFO,
     source=RuleSource.ADVISORY,
     doc_url="https://github.com/nvm-sh/nvm#nvmrc",
-    summary="Toolchain versions are pinned (.nvmrc, .tool-versions, .python-version, ...).",
+    summary="Toolchain versions are pinned (.nvmrc, .tool-versions, .python-version, "
+            "rust-toolchain.toml, package.json packageManager/engines, or requires-python).",
     why="Unpinned toolchain versions make agent runs unreproducible across machines.",
     fix="Pin toolchain versions via .nvmrc, .tool-versions, .python-version, "
-        "rust-toolchain.toml, or requires-python in pyproject.toml.",
+        "rust-toolchain.toml, package.json packageManager/engines, or requires-python "
+        "in pyproject.toml.",
     effort="mechanical",
 )
 def check_versions_pinned(index: ArtifactIndex):
@@ -347,7 +349,8 @@ def check_versions_pinned(index: ArtifactIndex):
     return 0.0, [Diagnostic(
         rule_id="tooling.versions.pinned", severity=Severity.INFO,
         message="No toolchain version pin found (.nvmrc, .tool-versions, .python-version, "
-                "rust-toolchain.toml, or requires-python in pyproject.toml).",
+                "rust-toolchain.toml, packageManager/engines in package.json, or "
+                "requires-python in any pyproject.toml).",
     )]
 
 

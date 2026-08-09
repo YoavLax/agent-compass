@@ -157,11 +157,11 @@ def test_agents_unknown_fields_survives_non_string_keys(tmp_path):
         ".claude/agents/rev.md": "---\nname: rev\ndescription: Reviews diffs when asked.\n1: oops\ncustom: x\n---\nBody.\n",
     })
     sat, diags = agents_rules.check_agents_unknown_fields(index)
-    assert sat == 0.0
-    assert {d.message for _, d in diags} == {
-        "Unknown agent frontmatter field '1'.",
-        "Unknown agent frontmatter field 'custom'.",
-    } or len(diags) == 2  # message wording may vary; the crash is the regression
+    # Neither key misspells a schema field, so both are extensions: reported,
+    # not scored. The crash on the non-string key is the regression under test.
+    assert sat == 1.0
+    message = "".join(d.message for _, d in diags)
+    assert "'1'" in message and "'custom'" in message
 
 
 def test_second_person_voice_is_not_a_defect(tmp_path):
@@ -600,7 +600,10 @@ def test_fenced_example_links_are_not_treated_as_references(tmp_path):
 def test_command_frontmatter_rejects_skill_package_metadata(tmp_path):
     """`KNOWN_COMMAND_FIELDS` was aliased to the whole SKILL/instructions field
     set, so skill-package metadata passed on a slash command and the
-    unknown-field check had nothing left to catch."""
+    unknown-field check had nothing left to catch.
+
+    Still caught, still named — but reported rather than scored, since none of
+    these keys misspells a command field (see `airx.rules.fields`)."""
     index = _repo(tmp_path, {
         ".claude/commands/release.md": (
             "---\ndescription: Cuts a release.\nlicense: MIT\nversion: 1.2.3\n"
@@ -608,11 +611,10 @@ def test_command_frontmatter_rejects_skill_package_metadata(tmp_path):
         ),
     })
     satisfaction, diags = agents_rules.check_commands_frontmatter_valid(index)
-    assert satisfaction == 0.0
-    flagged = sorted(
-        d.message.split("'")[1] for _, d in diags if "Unknown command" in d.message
-    )
-    assert flagged == ["author", "license", "paths", "tags", "version"]
+    assert satisfaction == 1.0
+    message = "".join(d.message for _, d in diags)
+    for field in ("author", "license", "paths", "tags", "version"):
+        assert f"'{field}'" in message
 
 
 def test_command_frontmatter_still_accepts_the_documented_invocation_schema(tmp_path):

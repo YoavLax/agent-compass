@@ -348,6 +348,31 @@ def test_links_resolve_accepts_repo_root_relative_link_from_subdir_entrypoint(tm
     assert diags == []
 
 
+def test_links_resolve_accepts_a_directory_target(tmp_path):
+    """Linking a directory rather than one of its files is ordinary Markdown —
+    the standard shape in a repository map — and used to be reported broken
+    because the check compared against the flat file list."""
+    _write(tmp_path, "scripts/setup.sh", "#!/bin/sh\n")
+    _write(tmp_path, "docs/adr/0001.md", "# ADR\n")
+    index = _entry(
+        tmp_path,
+        "# G\n\nTouch [`scripts/`](./scripts) and read [the ADRs](docs/adr) first.\n",
+    )
+    sat, diags = quality.check_links_resolve(index)
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_links_resolve_flags_a_directory_with_no_visible_files(tmp_path):
+    """`RepoTree.resolves` records only directories that hold a visible file,
+    so an empty or fully excluded directory is still a broken reference."""
+    index = _entry(tmp_path, "# G\n\nSee [nothing](./ghost) for more.\n")
+    sat, diags = quality.check_links_resolve(index)
+    assert sat == 0.0
+    _rel, diag = diags[0]
+    assert "./ghost" in diag.message
+
+
 def test_links_resolve_still_flags_link_missing_under_both_interpretations(tmp_path):
     _write(
         tmp_path, ".github/copilot-instructions.md",

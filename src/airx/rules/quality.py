@@ -435,7 +435,16 @@ def check_links_resolve(index: ArtifactIndex):
     # Resolve against the scanned snapshot, not the live filesystem: a link
     # into an unscanned dir (.git, node_modules) must produce the same report
     # whether or not that dir happens to exist on disk (D3/D4).
-    tree_files = {str(f) for f in index.tree.files} if index.tree is not None else set()
+    #
+    # Via `RepoTree.resolves`, which answers for directories as well as files.
+    # Comparing against the flat `tree.files` set instead — as this rule used to
+    # — reported every directory link as broken, and linking a directory rather
+    # than one of its files is ordinary Markdown ("see [`ci/`](./ci)"): the
+    # single most common shape of link in a repository map. That is also the
+    # exact case `resolves` was written for, and the case its docstring
+    # describes ("A reference to a directory resolves when the directory holds
+    # at least one visible file").
+    resolves = index.tree.resolves if index.tree is not None else (lambda _p: False)
     sats: list[float] = []
     diags: list[tuple[PurePosixPath, Diagnostic]] = []
     for rel, doc in _quality_docs(index):
@@ -460,7 +469,7 @@ def check_links_resolve(index: ArtifactIndex):
             # only report "escapes the repository root" when neither does and
             # the author's own text walks above root (leading `..`).
             root_relative_target = posixpath.normpath(ref)
-            if target in tree_files or (not ref.startswith("..") and root_relative_target in tree_files):
+            if resolves(target) or (not ref.startswith("..") and resolves(root_relative_target)):
                 continue
             if target.startswith(".."):
                 file_diags.append(Diagnostic(
@@ -470,7 +479,8 @@ def check_links_resolve(index: ArtifactIndex):
             else:
                 file_diags.append(Diagnostic(
                     rule_id="quality.links.resolve", severity=Severity.WARNING,
-                    message=f"Relative link '{ref}' does not resolve to a file in the scanned tree.",
+                    message=f"Relative link '{ref}' does not resolve to a file or directory "
+                            f"in the scanned tree.",
                 ))
         sats.append(1.0 if not file_diags else 0.0)
         diags.extend((rel, d) for d in file_diags)

@@ -37,12 +37,31 @@ _SECTION_INTRO_CHARS = 200
 #: (signal name, keyword set) in report order. A signal counts when any
 #: heading line or the first `_SECTION_INTRO_CHARS` chars of the body
 #: contain any keyword (case-insensitive).
+#:
+#: The keywords are literals except where a heading names the project between
+#: two of them. "What <project> is" is an overview section by any reading, but
+#: the literal "what is" never appears in it, so a CLAUDE.md with a plain
+#: overview and a plain repository map was reported as covering neither —
+#: which is the kind of miss that teaches a reader to discount the whole
+#: finding. Those two shapes are matched as patterns instead.
 _SECTION_SIGNALS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("overview", ("overview", "about", "purpose", "what is")),
     ("techstack", ("tech stack", "stack", "technologies", "built with", "framework", "language")),
     ("guidelines", ("guideline", "convention", "style", "standard", "rule")),
     ("structure", ("structure", "layout", "organization", "director", "folder")),
     ("resources", ("script", "command", "tooling", "resource", "mcp")),
+)
+
+#: Extra per-signal patterns, for the section names a substring cannot reach.
+_SECTION_SIGNAL_RES: tuple[tuple[str, tuple[re.Pattern[str], ...]], ...] = (
+    # "What this project is", "What <name> is" — the project's own name often
+    # sits between the two words that make the phrase an overview heading, so
+    # the literal "what is" never appears in the one heading shape it was
+    # meant to catch.
+    ("overview", (re.compile(r"\bwhat\b[^\n]{0,40}?\bis\b"),)),
+    # "Repository map", "Codebase map" — the standard heading for the section
+    # that tells an agent where things live.
+    ("structure", (re.compile(r"\bmaps?\b"),)),
 )
 
 
@@ -53,10 +72,15 @@ def _covered_signals(doc: ParsedDocument) -> frozenset[str]:
     identically instead of re-deriving it)."""
     headings = "\n".join(_SECTION_HEADING_RE.findall(doc.body))
     haystack = (headings + "\n" + doc.body[:_SECTION_INTRO_CHARS]).lower()
-    return frozenset(
+    covered = {
         name for name, keywords in _SECTION_SIGNALS
         if any(kw in haystack for kw in keywords)
+    }
+    covered.update(
+        name for name, patterns in _SECTION_SIGNAL_RES
+        if any(p.search(haystack) for p in patterns)
     )
+    return frozenset(covered)
 
 # --- foundation.imports.resolve ----------------------------------------------
 
