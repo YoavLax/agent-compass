@@ -14,7 +14,33 @@ in [`plan-v3-codecompass.md`](plan-v3-codecompass.md). The scoring pipeline,
 report schema, and determinism contract are untouched — ingest happens before
 the pipeline, exactly like the CLI's clone path.
 
+### Fixed
+- **`.vscode/*.json` is parsed as JSON with comments** (new `airx.jsonc`).
+  `tooling.mcp.valid` reported `microsoft/vscode-copilot-chat`'s
+  `.vscode/mcp.json` as *"not valid JSON: Expecting property name enclosed in
+  double quotes"* and, being an `error`, capped that repository's grade at C.
+  The file is correct: it carries a `//` comment and a trailing comma, and VS
+  Code documents its own config files as JSON-with-comments —
+  *"you can use single line (`//`) as well as block comments (`/* */`) … The
+  mode also accepts trailing commas"*
+  ([VS Code, JSON editing](https://code.visualstudio.com/docs/languages/json)).
+  The analyzer was accusing the team that owns the format of breaking it.
+
+  The leniency stops at `.vscode/`, because the opposite is documented
+  elsewhere: Claude Code's settings reference says of `.claude/settings.json`
+  that *"this file remains strict: a file that fails validation is rejected as
+  a whole and reported"*, and no comment support is documented for `.mcp.json`
+  or `.github/hooks/*.json`. A comment in those is a real defect and still
+  fails. Comments are blanked rather than deleted, so the line and column of a
+  genuine syntax error still point where the user will look. Ruleset bumped to
+  `0.5.2` (D7): a repository with a commented `.vscode/mcp.json` now scores
+  differently.
+
 ### Added
+- **Added a [Contributor License Agreement](CLA.md)**, accepted by signing
+  off commits (`git commit -s`). Contributors keep copyright in their work;
+  the agreement grants the rights needed to offer the project under both
+  public and commercial terms.
 - **Streaming progress** — `POST /api/analyze/stream` returns NDJSON: a
   `{"type":"progress","phase","done","total"}` line as each phase advances, then
   a terminal `result` or `error` line. The counts come from the ingest itself
