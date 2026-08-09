@@ -102,6 +102,28 @@ def test_description_quality_scores_good_over_bad(tmp_path):
     assert good_sat > bad_sat
 
 
+def test_description_quality_na_when_user_invoked_only(tmp_path):
+    """Found analyzing mattpocock/skills: 20 of 35 skills set
+    `disable-model-invocation: true`, and nearly every low description-quality
+    score in that repo belonged to one of them. The model never routes to a
+    user-invoked-only skill, so this rule (and min-score/coherence below)
+    must not penalize its description for lacking routing signal."""
+    doc = _doc(
+        tmp_path, "bad",
+        "name: bad\ndescription: Helps with stuff.\ndisable-model-invocation: true\n",
+    )
+    assert rules.check_description_quality(doc) is None
+    assert rules.check_description_min_score(doc) is None
+    assert rules.check_coherence(doc) is None
+
+
+def test_description_quality_still_applies_when_not_user_invoked_only(tmp_path):
+    doc = _doc(tmp_path, "bad", "name: bad\ndescription: Helps with stuff.")
+    assert rules.check_description_quality(doc) is not None
+    assert rules.check_description_min_score(doc) is not None
+    assert rules.check_coherence(doc) is not None
+
+
 def test_yaml_anchor_detected(tmp_path):
     doc = _doc(tmp_path, "x", "name: &n x\ndescription: *n")
     sat, diags = rules.check_yaml_anchors(doc)

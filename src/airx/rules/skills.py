@@ -12,7 +12,12 @@ Every rule function returns `(satisfaction, diagnostics)` or `None`:
   * `None` means the rule does not apply to this file (e.g. there is no
     `description` field to grade because it's already missing — that is
     reported by a separate required-field rule instead of being
-    double-counted here).
+    double-counted here). The three model-routing description rules
+    (`check_description_quality`, `check_description_min_score`,
+    `check_coherence`) also return `None` for a `disable-model-invocation:
+    true` skill — see `_is_user_invoked_only` — since a skill the model never
+    selects from its description can't be penalized for routing signal it
+    doesn't need.
   * binary rules return `(1.0, [])` on pass or `(0.0, [Diagnostic(...)])` on
     fail.
   * `check_description_quality` is graded: it returns a continuous
@@ -152,6 +157,22 @@ _HELP_PATTERNS: tuple[str, ...] = ("--help", "argparse", "click", "commander", "
 
 def _is_real_base64(text: str) -> bool:
     return any(c.isupper() for c in text) and any(c.islower() for c in text)
+
+
+def _is_user_invoked_only(doc: ParsedDocument) -> bool:
+    """True when `disable-model-invocation: true` (agentskills.io spec field)
+    makes this skill reachable only by explicit user invocation — a slash
+    command or direct mention — never by the model matching its description
+    against the user's request. Found analyzing mattpocock/skills: 20 of 35
+    skills there set this flag, and they accounted for nearly every low score
+    from the three rules below. Each of those rules is justified entirely by
+    model-routing risk (see their `why` fields: 'decide whether the skill is
+    ever loaded', 'the agent will rarely select this skill', 'too little
+    signal for the routing model to match on') — none of which applies when
+    the model never selects the skill from its description in the first
+    place, so they must not penalize a skill for it.
+    """
+    return doc.frontmatter.get("disable-model-invocation") is True
 
 
 def _field_line(raw_text: str, field: str) -> int | None:
@@ -718,7 +739,8 @@ def check_description_person_voice(doc: ParsedDocument):
     applicability=Applicability.QUALITY, weight=8, severity=Severity.INFO,
     source=RuleSource.ADVISORY, doc_url="https://agentskills.io/skill-creation/optimizing-descriptions",
     summary="Graded 0-100 score of description discoverability (action verbs, trigger phrases, "
-            "keyword density, specificity, length).",
+            "keyword density, specificity, length). N/A for a `disable-model-invocation: true` "
+            "skill, which is never selected from its description in the first place.",
     why="Discoverable descriptions with action verbs and trigger phrases decide whether the skill is ever loaded.",
     fix="Add action verbs, explicit 'Use when...' triggers, and domain keywords to the description.",
     effort="authoring",
@@ -726,6 +748,8 @@ def check_description_person_voice(doc: ParsedDocument):
 def check_description_quality(doc: ParsedDocument):
     desc = doc.frontmatter.get("description")
     if not isinstance(desc, str) or not desc.strip():
+        return None
+    if _is_user_invoked_only(doc):
         return None
     score, suggestions = score_description(desc)
     suffix = " Suggestions: " + "; ".join(suggestions) if suggestions else ""
@@ -740,7 +764,9 @@ def check_description_quality(doc: ParsedDocument):
     id="skills.description.min-score", pillar=Pillar.SKILLS, scope=RuleScope.SKILL,
     applicability=Applicability.QUALITY, weight=3, severity=Severity.WARNING,
     source=RuleSource.ADVISORY, doc_url="https://agentskills.io/skill-creation/optimizing-descriptions",
-    summary=f"Description quality score meets the {config.MIN_DESCRIPTION_SCORE_DEFAULT}/100 floor.",
+    summary=f"Description quality score meets the {config.MIN_DESCRIPTION_SCORE_DEFAULT}/100 floor. "
+            "N/A for a `disable-model-invocation: true` skill, which is never selected from its "
+            "description in the first place.",
     why="A very weak description means the agent will rarely select this skill.",
     fix="Rewrite the description with action verbs, trigger phrases, and specific domain terms.",
     effort="authoring",
@@ -748,6 +774,8 @@ def check_description_quality(doc: ParsedDocument):
 def check_description_min_score(doc: ParsedDocument):
     desc = doc.frontmatter.get("description")
     if not isinstance(desc, str) or not desc.strip():
+        return None
+    if _is_user_invoked_only(doc):
         return None
     score, suggestions = score_description(desc)
     if score >= config.MIN_DESCRIPTION_SCORE_DEFAULT:
@@ -765,7 +793,8 @@ def check_description_min_score(doc: ParsedDocument):
     applicability=Applicability.QUALITY, weight=3, severity=Severity.INFO,
     source=RuleSource.ADVISORY, doc_url="https://agentskills.io/skill-creation/optimizing-descriptions",
     summary=f"Description carries at least {config.MIN_DESCRIPTION_CONTENT_WORDS} content words "
-            f"(non-stopword), enough signal to route on.",
+            f"(non-stopword), enough signal to route on. N/A for a `disable-model-invocation: true` "
+            "skill, which is never routed to from its description in the first place.",
     why="A description with almost no content words gives the routing model too little signal to match on.",
     fix="Expand the description with the specific tasks, inputs, and trigger phrases the skill covers.",
     effort="authoring",
@@ -773,6 +802,8 @@ def check_description_min_score(doc: ParsedDocument):
 def check_coherence(doc: ParsedDocument):
     desc = doc.frontmatter.get("description")
     if not isinstance(desc, str):
+        return None
+    if _is_user_invoked_only(doc):
         return None
     words = _WORD_RE.findall(desc)
     content_words = [w for w in words if w.lower() not in _STOP_WORDS]
