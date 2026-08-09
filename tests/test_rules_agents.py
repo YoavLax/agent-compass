@@ -251,17 +251,36 @@ def test_unknown_fields_satisfied_by_fixture():
     assert diags == []
 
 
-def test_unknown_fields_flags_stray_field(tmp_path):
+def test_unknown_fields_flags_misspelled_field(tmp_path):
     index = _index(tmp_path, {
         ".claude/agents/odd.md": (
-            "---\nname: odd\ndescription: Reviews code changes.\ntools: Read\nfoo: bar\n---\n\nBody.\n"
+            "---\nname: odd\ndescription: Reviews code changes.\ntoosl: Read\n---\n\nBody.\n"
         ),
     })
     sat, diags = rules.check_agents_unknown_fields(index)
     assert sat == 0.0
     rel, diag = diags[0]
-    assert "foo" in diag.message
+    assert "toosl" in diag.message and "tools" in diag.message
     assert diag.severity == Severity.WARNING
+
+
+def test_unknown_fields_reports_extension_keys_without_scoring_them(tmp_path):
+    """The fields a repository adds for its own dispatcher are ignored by the
+    platform exactly as intended; naming them once is honest, failing the agent
+    for them is not (see `airx.rules.fields`)."""
+    index = _index(tmp_path, {
+        ".claude/agents/odd.md": (
+            "---\nname: odd\ndescription: Reviews code changes.\ntools: Read\n"
+            "team: platform\nqueue: fast\nmytool-model: some-model\n---\n\nBody.\n"
+        ),
+    })
+    sat, diags = rules.check_agents_unknown_fields(index)
+    assert sat == 1.0
+    assert len(diags) == 1
+    _, diag = diags[0]
+    assert diag.severity == Severity.INFO
+    for field in ("team", "queue", "mytool-model"):
+        assert f"'{field}'" in diag.message
 
 
 def test_unknown_fields_na_without_agents(tmp_path):
@@ -359,13 +378,24 @@ def test_prompt_frontmatter_flags_dangling_agent_reference():
     assert "ghost-agent" in diag.message
 
 
-def test_prompt_frontmatter_flags_unknown_field(tmp_path):
+def test_prompt_frontmatter_flags_misspelled_field(tmp_path):
     index = _index(tmp_path, {
-        ".github/prompts/odd.prompt.md": "---\ntemperature: 0.2\n---\n\nDo it.\n",
+        ".github/prompts/odd.prompt.md": "---\nmdoel: gpt-5\n---\n\nDo it.\n",
     })
     sat, diags = rules.check_prompts_frontmatter_valid(index)
     assert sat == 0.0
     rel, diag = diags[0]
+    assert "mdoel" in diag.message and "model" in diag.message
+
+
+def test_prompt_frontmatter_reports_extension_key_without_scoring_it(tmp_path):
+    index = _index(tmp_path, {
+        ".github/prompts/odd.prompt.md": "---\ntemperature: 0.2\n---\n\nDo it.\n",
+    })
+    sat, diags = rules.check_prompts_frontmatter_valid(index)
+    assert sat == 1.0
+    rel, diag = diags[0]
+    assert diag.severity == Severity.INFO
     assert "temperature" in diag.message
 
 
@@ -407,15 +437,29 @@ def test_commands_frontmatter_valid_accepts_current_schema(tmp_path):
     assert diags == []
 
 
-def test_commands_frontmatter_valid_flags_unknown_field(tmp_path):
+def test_commands_frontmatter_valid_flags_misspelled_field(tmp_path):
     index = _index(tmp_path, {
-        ".claude/commands/odd.md": "---\ndescription: Does a thing.\nbogus-field: 1\n---\n\nBody.\n",
+        ".claude/commands/odd.md": "---\ndescriptoin: Does a thing.\n---\n\nBody.\n",
     })
     sat, diags = rules.check_commands_frontmatter_valid(index)
     assert sat == 0.0
     rel, diag = diags[0]
     assert rel == PurePosixPath(".claude/commands/odd.md")
-    assert "bogus-field" in diag.message
+    assert "descriptoin" in diag.message and "description" in diag.message
+
+
+def test_commands_frontmatter_reports_extension_key_without_scoring_it(tmp_path):
+    index = _index(tmp_path, {
+        ".claude/commands/odd.md": (
+            "---\ndescription: Does a thing.\nstage: review\nmytool-effort: high\n---\n\nBody.\n"
+        ),
+    })
+    sat, diags = rules.check_commands_frontmatter_valid(index)
+    assert sat == 1.0
+    assert len(diags) == 1
+    _, diag = diags[0]
+    assert diag.severity == Severity.INFO
+    assert "'stage'" in diag.message and "'mytool-effort'" in diag.message
 
 
 def test_commands_frontmatter_valid_flags_dangling_agent(tmp_path):

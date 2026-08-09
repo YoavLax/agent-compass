@@ -67,6 +67,25 @@ def test_sections_coverage_keyword_in_first_200_body_chars_counts(tmp_path):
     assert len(diags) == 1
 
 
+def test_sections_coverage_reads_project_named_overview_and_map_headings(tmp_path):
+    """"What <project> is" is an overview section and "Repository map" is a
+    structure section by any reading, but neither contains the literal keyword
+    the rule looked for, so both were counted as missing."""
+    root = _repo(tmp_path, {
+        "CLAUDE.md": (
+            "# CLAUDE.md — Kestrel\n\n"
+            "## What Kestrel is\n\nA web app.\n\n"
+            "## Repository map\n\nsrc/ holds the modules.\n"
+        ),
+    })
+    sat, diags = foundation.check_sections_coverage(_index(root))
+    assert sat == 0.4  # overview + structure, of 5
+    _path, diag = diags[0]
+    missing = diag.message.split("missing:")[1]
+    assert "overview" not in missing
+    assert "structure" not in missing
+
+
 def test_sections_coverage_not_applicable_without_entrypoint(tmp_path):
     root = _repo(tmp_path, {"README.md": "# Hello\n"})
     assert foundation.check_sections_coverage(_index(root)) is None

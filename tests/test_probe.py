@@ -52,6 +52,41 @@ def test_hygiene_and_pins(tmp_path: Path) -> None:
     assert ".nvmrc" in facts.version_pins
 
 
+def test_version_pins_read_package_manager_and_engines(tmp_path: Path) -> None:
+    """Corepack's `packageManager` and npm's `engines` are how the JS ecosystem
+    pins a toolchain; looking only for .nvmrc reported "no pin found" for a
+    repository that pins both."""
+    _write(tmp_path, "package.json", json.dumps({
+        "packageManager": "pnpm@9.0.0",
+        "engines": {"node": ">=20"},
+    }))
+    facts = _facts(tmp_path)
+    assert facts.version_pins == ("package.json:engines", "package.json:packageManager")
+
+
+def test_version_pins_ignore_empty_package_manager_and_engines(tmp_path: Path) -> None:
+    _write(tmp_path, "package.json", json.dumps({"packageManager": "  ", "engines": {}}))
+    assert _facts(tmp_path).version_pins == ()
+
+
+def test_version_pins_find_requires_python_outside_the_root(tmp_path: Path) -> None:
+    """A monorepo that keeps its Python in a subdirectory has no root
+    pyproject.toml at all, so a root-only check missed the pin entirely."""
+    _write(tmp_path, "services/api/pyproject.toml", '[project]\nrequires-python = ">=3.11"\n')
+    assert _facts(tmp_path).version_pins == ("services/api/pyproject.toml:requires-python",)
+
+
+def test_version_pins_prefer_the_root_pyproject(tmp_path: Path) -> None:
+    _write(tmp_path, "pyproject.toml", '[project]\nrequires-python = ">=3.11"\n')
+    _write(tmp_path, "packages/a/pyproject.toml", '[project]\nrequires-python = ">=3.11"\n')
+    assert _facts(tmp_path).version_pins == ("pyproject.toml:requires-python",)
+
+
+def test_version_pins_absent_when_no_pyproject_declares_one(tmp_path: Path) -> None:
+    _write(tmp_path, "services/api/pyproject.toml", '[project]\nname = "x"\n')
+    assert _facts(tmp_path).version_pins == ()
+
+
 def test_languages_histogram_sorted(tmp_path: Path) -> None:
     for i in range(3):
         _write(tmp_path, f"src/m{i}.py", "x = 1\n")

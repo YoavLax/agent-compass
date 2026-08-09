@@ -21,6 +21,7 @@ from airx import config
 from airx.discovery import ArtifactIndex
 from airx.model import Applicability, Artifact, Diagnostic, Pillar, Platform, RuleSource, Severity
 from airx.rules import skills as skills_rules
+from airx.rules.fields import classify_unknown_fields, extensions_message, typo_message
 from airx.rules.registry import RuleScope, rule
 from airx.rules.skills import score_description
 from airx.tokenizer import estimate_tokens
@@ -320,28 +321,33 @@ def check_agents_tools_declared(index: ArtifactIndex):
     id="agents.unknown-fields", pillar=Pillar.AGENTS, scope=RuleScope.REPO,
     applicability=Applicability.QUALITY, weight=2, severity=Severity.WARNING,
     source=RuleSource.ADVISORY, doc_url=_DOC_URL_COPILOT_AGENTS,
-    why="Unknown frontmatter fields are silently ignored by the platforms, hiding typos of real fields.",
-    fix="Remove or rename frontmatter fields outside the known agent schema.",
+    why="A misspelled agent frontmatter field is silently ignored, so the setting its author "
+        "wrote never takes effect.",
+    fix="Correct any frontmatter field that misspells a known agent field.",
     effort="mechanical",
-    summary="Agent frontmatter has no fields outside the known agent schema.",
+    summary="Agent frontmatter contains no misspelling of a known agent field.",
 )
 def check_agents_unknown_fields(index: ArtifactIndex):
+    """Scored on the typos only — see `airx.rules.fields` for why extension
+    keys are reported without being counted against the repository."""
     agents = _agent_docs(index)
     if not agents:
         return None
     sats: list[float] = []
     diags: list[FileDiag] = []
     for a in agents:
-        unknown = sorted(str(f) for f in a.doc.frontmatter if str(f) not in config.KNOWN_AGENT_FIELDS)
-        if not unknown:
-            sats.append(1.0)
-        else:
-            sats.append(0.0)
-            for field in unknown:
-                diags.append((a.rel_path, Diagnostic(
-                    rule_id="agents.unknown-fields", severity=Severity.WARNING,
-                    message=f"Unknown agent frontmatter field '{field}'.",
-                )))
+        verdict = classify_unknown_fields(a.doc.frontmatter, config.KNOWN_AGENT_FIELDS)
+        sats.append(0.0 if verdict.typos else 1.0)
+        for field, suggestion in verdict.typos:
+            diags.append((a.rel_path, Diagnostic(
+                rule_id="agents.unknown-fields", severity=Severity.WARNING,
+                message=typo_message(field, suggestion),
+            )))
+        if verdict.extensions:
+            diags.append((a.rel_path, Diagnostic(
+                rule_id="agents.unknown-fields", severity=Severity.INFO,
+                message=extensions_message(verdict.extensions, "agent"),
+            )))
     return _mean(sats), diags
 
 
@@ -410,10 +416,10 @@ def _known_agent_names(index: ArtifactIndex) -> frozenset[str]:
     applicability=Applicability.QUALITY, weight=3, severity=Severity.WARNING,
     source=RuleSource.SPEC, doc_url=_DOC_URL_PROMPTS,
     platforms=(Platform.COPILOT,),
-    why="Unknown prompt fields are ignored and a dangling agent reference makes the prompt silently fall back to the default agent.",
-    fix="Keep prompt frontmatter within the known field set and point `agent:` at an existing agent file's name or filename stem.",
+    why="A misspelled prompt field is ignored, and a dangling agent reference makes the prompt silently fall back to the default agent.",
+    fix="Correct any frontmatter field that misspells a known prompt field, and point `agent:` at an existing agent file's name or filename stem.",
     effort="mechanical",
-    summary="Prompt frontmatter uses only known fields, and any `agent:` reference resolves to an existing agent.",
+    summary="Prompt frontmatter misspells no known field, and any `agent:` reference resolves to an existing agent.",
 )
 def check_prompts_frontmatter_valid(index: ArtifactIndex):
     prompts = [a for a in _sorted_artifacts(index.prompts) if a.doc is not None]
@@ -425,11 +431,19 @@ def check_prompts_frontmatter_valid(index: ArtifactIndex):
     for p in prompts:
         fm = p.doc.frontmatter
         file_diags: list[Diagnostic] = []
+        scored_diags = 0  # only these decide the file's satisfaction
         if fm:  # a prompt with no frontmatter passes: nothing to validate.
-            for field in sorted(str(f) for f in fm if str(f) not in config.KNOWN_PROMPT_FIELDS):
+            verdict = classify_unknown_fields(fm, config.KNOWN_PROMPT_FIELDS)
+            for field, suggestion in verdict.typos:
                 file_diags.append(Diagnostic(
                     rule_id="prompts.frontmatter.valid", severity=Severity.WARNING,
-                    message=f"Unknown prompt frontmatter field '{field}'.",
+                    message=typo_message(field, suggestion),
+                ))
+                scored_diags += 1
+            if verdict.extensions:
+                file_diags.append(Diagnostic(
+                    rule_id="prompts.frontmatter.valid", severity=Severity.INFO,
+                    message=extensions_message(verdict.extensions, "prompt"),
                 ))
             agent_ref = fm.get("agent")
             if isinstance(agent_ref, str) and agent_ref.strip() and agent_ref.strip() not in agent_names:
@@ -438,7 +452,8 @@ def check_prompts_frontmatter_valid(index: ArtifactIndex):
                     message=f"Prompt references agent '{agent_ref.strip()}' but no agent file with that "
                             f"frontmatter name or filename stem exists.",
                 ))
-        sats.append(1.0 if not file_diags else 0.0)
+                scored_diags += 1
+        sats.append(1.0 if not scored_diags else 0.0)
         diags.extend((p.rel_path, d) for d in file_diags)
     return _mean(sats), diags
 
@@ -452,12 +467,12 @@ def check_prompts_frontmatter_valid(index: ArtifactIndex):
     applicability=Applicability.QUALITY, weight=3, severity=Severity.WARNING,
     source=RuleSource.SPEC, doc_url=_DOC_URL_COMMANDS,
     platforms=(Platform.CLAUDE,),
-    why="Unknown command fields are silently ignored, and a dangling `agent:` reference makes "
+    why="A misspelled command field is silently ignored, and a dangling `agent:` reference makes "
         "`context: fork` silently fall back to the default general-purpose agent.",
-    fix="Keep command frontmatter within the known field set and point `agent:` at an existing "
-        "agent file's name or filename stem.",
+    fix="Correct any frontmatter field that misspells a known command field, and point `agent:` "
+        "at an existing agent file's name or filename stem.",
     effort="mechanical",
-    summary="Claude command frontmatter uses only known fields, and any `agent:` reference "
+    summary="Claude command frontmatter misspells no known field, and any `agent:` reference "
             "resolves to an existing agent.",
 )
 def check_commands_frontmatter_valid(index: ArtifactIndex):
@@ -470,11 +485,19 @@ def check_commands_frontmatter_valid(index: ArtifactIndex):
     for c in commands:
         fm = c.doc.frontmatter
         file_diags: list[Diagnostic] = []
+        scored_diags = 0  # only these decide the file's satisfaction
         if fm:  # a command with no frontmatter passes: nothing to validate.
-            for field in sorted(str(f) for f in fm if str(f) not in config.KNOWN_COMMAND_FIELDS):
+            verdict = classify_unknown_fields(fm, config.KNOWN_COMMAND_FIELDS)
+            for field, suggestion in verdict.typos:
                 file_diags.append(Diagnostic(
                     rule_id="agents.commands.frontmatter.valid", severity=Severity.WARNING,
-                    message=f"Unknown command frontmatter field '{field}'.",
+                    message=typo_message(field, suggestion),
+                ))
+                scored_diags += 1
+            if verdict.extensions:
+                file_diags.append(Diagnostic(
+                    rule_id="agents.commands.frontmatter.valid", severity=Severity.INFO,
+                    message=extensions_message(verdict.extensions, "command"),
                 ))
             agent_ref = fm.get("agent")
             if isinstance(agent_ref, str) and agent_ref.strip() and agent_ref.strip() not in agent_names:
@@ -483,7 +506,8 @@ def check_commands_frontmatter_valid(index: ArtifactIndex):
                     message=f"Command references agent '{agent_ref.strip()}' but no agent file with that "
                             f"frontmatter name or filename stem exists.",
                 ))
-        sats.append(1.0 if not file_diags else 0.0)
+                scored_diags += 1
+        sats.append(1.0 if not scored_diags else 0.0)
         diags.extend((c.rel_path, d) for d in file_diags)
     return _mean(sats), diags
 

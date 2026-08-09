@@ -217,6 +217,30 @@ def test_disclosure_used_passes_long_body_with_scripts_dir(tmp_path):
     assert sat == 1.0
 
 
+def test_disclosure_used_passes_long_body_with_a_differently_named_bundle_dir(tmp_path):
+    """The spec names references/ and scripts/ as examples, not as the only
+    permitted names. A skill that split its detail into a directory of its own
+    naming had done the thing this rule asks for and was reported as if it had
+    not."""
+    body = "\n" + ("Line of text.\n" * (config.DISCLOSURE_BODY_LINES + 5))
+    doc = _doc(tmp_path, "longtmpl", "name: longtmpl\ndescription: Does something when asked.", body=body)
+    (tmp_path / "longtmpl" / "templates").mkdir()
+    (tmp_path / "longtmpl" / "templates" / "report.md").write_text("Report.\n", encoding="utf-8")
+    sat, diags = rules.check_disclosure_used(doc, build_index(fs.scan(tmp_path)))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_disclosure_used_ignores_a_sibling_file_that_is_not_a_directory(tmp_path):
+    """A second Markdown file next to SKILL.md is not a bundle directory, and
+    the body is still the thing being loaded all at once."""
+    body = "\n" + ("Line of text.\n" * (config.DISCLOSURE_BODY_LINES + 5))
+    doc = _doc(tmp_path, "longflat", "name: longflat\ndescription: Does something when asked.", body=body)
+    (tmp_path / "longflat" / "NOTES.md").write_text("Notes.\n", encoding="utf-8")
+    sat, diags = rules.check_disclosure_used(doc, build_index(fs.scan(tmp_path)))
+    assert sat == 0.0
+
+
 # --- skills.disclosure.load-triggers -----------------------------------------
 
 def test_load_triggers_not_applicable_without_references(tmp_path):

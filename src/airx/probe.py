@@ -59,11 +59,26 @@ class RepoFacts:
     version_pins: tuple[str, ...]
 
 
+#: How many pyproject.toml files a single probe will open looking for a
+#: `requires-python` pin. Facts must stay cheap on a large monorepo, and the
+#: listing is sorted, so the bound is a deterministic prefix rather than an
+#: arbitrary subset.
+_MAX_PYPROJECT_PROBES = 50
+
+
 def _read_text(tree: RepoTree, rel: PurePosixPath) -> str | None:
     try:
         return (tree.root / str(rel)).read_text(encoding="utf-8-sig")
     except (OSError, UnicodeDecodeError):
         return None
+
+
+def _pyproject_paths(tree: RepoTree) -> list[PurePosixPath]:
+    """Every pyproject.toml in the listing, shallowest first then by path, so
+    the root one (and then the top-level package roots) are consulted first."""
+    found = [f for f in tree.files if f.name == "pyproject.toml"]
+    found.sort(key=lambda p: (len(p.parts), p.as_posix()))
+    return found[:_MAX_PYPROJECT_PROBES]
 
 
 def probe(tree: RepoTree) -> RepoFacts:
@@ -78,8 +93,9 @@ def probe(tree: RepoTree) -> RepoFacts:
             counts[ext] = counts.get(ext, 0) + 1
     languages = tuple(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5])
 
-    # package.json scripts.
+    # package.json scripts, plus the two fields that pin a JS toolchain.
     package_scripts: tuple[str, ...] = ()
+    package_pins: list[str] = []
     pkg_raw = _read_text(tree, PurePosixPath("package.json"))
     if pkg_raw is not None:
         try:
@@ -87,6 +103,15 @@ def probe(tree: RepoTree) -> RepoFacts:
             scripts = pkg.get("scripts")
             if isinstance(scripts, dict):
                 package_scripts = tuple(sorted(str(k) for k in scripts))
+            # `packageManager` is Corepack's pin ("pnpm@9.0.0") and `engines`
+            # is npm's; between them they are how the JS ecosystem pins a
+            # toolchain. Looking only for .nvmrc missed both, so a repository
+            # pinning Node and its package manager the standard way was told it
+            # pinned nothing.
+            if isinstance(pkg.get("packageManager"), str) and pkg["packageManager"].strip():
+                package_pins.append("package.json:packageManager")
+            if isinstance(pkg.get("engines"), dict) and pkg["engines"]:
+                package_pins.append("package.json:engines")
         except (json.JSONDecodeError, AttributeError):
             pass
 
@@ -174,14 +199,22 @@ def probe(tree: RepoTree) -> RepoFacts:
         )
     )
 
-    pins: list[str] = []
+    pins: list[str] = list(package_pins)
     for pin_file in (".nvmrc", ".tool-versions", ".python-version"):
         if PurePosixPath(pin_file) in files:
             pins.append(pin_file)
     if PurePosixPath("rust-toolchain.toml") in files:
         pins.append("rust-toolchain.toml")
-    if "requires-python" in pyproject_raw:
-        pins.append("pyproject.toml:requires-python")
+    # `requires-python` from any pyproject.toml, not just the root one. A
+    # monorepo that keeps its Python in a subdirectory has no root
+    # pyproject.toml at all, so a root-only check reported "no version pin
+    # found" for a repository that pins its interpreter in every package it
+    # ships.
+    for pyproject in _pyproject_paths(tree):
+        raw = pyproject_raw if pyproject == PurePosixPath("pyproject.toml") else _read_text(tree, pyproject)
+        if raw and "requires-python" in raw:
+            pins.append(f"{pyproject.as_posix()}:requires-python")
+            break
     version_pins = tuple(sorted(pins))
 
     return RepoFacts(

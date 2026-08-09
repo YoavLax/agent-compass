@@ -39,36 +39,6 @@ _BYPASS_VALUE = "bypassPermissions"
 _BYPASS_KEY = "dangerouslySkipPermissions"
 
 
-@rule(
-    id="safety.local-files.not-committed", pillar=Pillar.SAFETY, scope=RuleScope.REPO,
-    applicability=Applicability.QUALITY, weight=6, severity=Severity.ERROR,
-    source=RuleSource.SPEC,
-    doc_url="https://code.claude.com/docs/en/settings#settings-files",
-    summary="Personal Claude files (CLAUDE.local.md, .claude/settings.local.json) are not committed.",
-    platforms=_CLAUDE_ONLY,
-    why="Local settings files are personal, machine-specific configuration; committing them leaks local setup into every clone.",
-    fix="Remove CLAUDE.local.md / .claude/settings.local.json from version control and add them to .gitignore.",
-    effort="mechanical",
-    spec_quote="Add `CLAUDE.local.md` to your `.gitignore` so it isn't committed.",
-)
-def check_local_files_not_committed(index: ArtifactIndex):
-    """Always applicable: passes trivially when no local file is in the tree."""
-    local_paths = sorted(
-        tuple(index.claude_settings_local_paths) + tuple(index.claude_local_md_paths),
-        key=lambda p: p.as_posix(),
-    )
-    if not local_paths:
-        return 1.0, []
-    diags: list[tuple[PurePosixPath, Diagnostic]] = []
-    for path in local_paths:
-        diags.append((path, Diagnostic(
-            rule_id="safety.local-files.not-committed", severity=Severity.ERROR,
-            message=f"{path.as_posix()} is a personal local file and must not be committed; "
-                    f"remove it from version control and gitignore it.",
-        )))
-    return 0.0, diags
-
-
 def _gitignore_line_covers(line: str, entry: str) -> bool:
     """True when a .gitignore line covers a local-file entry.
 
@@ -86,6 +56,59 @@ def _gitignore_line_covers(line: str, entry: str) -> bool:
     pattern = line.lstrip("/")
     basename = entry.rsplit("/", 1)[-1]
     return fnmatch.fnmatch(entry, pattern) or fnmatch.fnmatch(basename, pattern)
+
+
+@rule(
+    id="safety.local-files.not-committed", pillar=Pillar.SAFETY, scope=RuleScope.REPO,
+    applicability=Applicability.QUALITY, weight=6, severity=Severity.ERROR,
+    source=RuleSource.SPEC,
+    doc_url="https://code.claude.com/docs/en/settings#settings-files",
+    summary="Personal Claude files (CLAUDE.local.md, .claude/settings.local.json) are not committed.",
+    platforms=_CLAUDE_ONLY,
+    why="Local settings files are personal, machine-specific configuration; committing them leaks local setup into every clone.",
+    fix="Remove CLAUDE.local.md / .claude/settings.local.json from version control and add them to .gitignore.",
+    effort="mechanical",
+    spec_quote="Add `CLAUDE.local.md` to your `.gitignore` so it isn't committed.",
+)
+def check_local_files_not_committed(index: ArtifactIndex):
+    """Always applicable: passes trivially when no local file is in the tree.
+
+    A `.gitignore`-covered local file is not a finding. This analysis walks the
+    filesystem, not the git index, so "the file is in the working tree" is all
+    it can observe directly — and that is *not* the same claim as "the file is
+    committed". A developer whose `.claude/settings.local.json` sits untracked
+    and ignored in their checkout, which is exactly the arrangement this rule
+    exists to produce, was getting an ERROR for it; and an ERROR caps the grade,
+    so the tool was demoting repositories for doing the right thing.
+
+    Gitignore coverage is the strongest evidence available from the tree alone,
+    and it is the same evidence the cited spec sentence points at: "Add
+    `CLAUDE.local.md` to your `.gitignore` so it isn't committed." A repository
+    that followed that instruction has, by the spec's own account, satisfied
+    this rule. The residual case — a file both tracked and later ignored — is
+    unknowable without git and is left to `safety.local-files.gitignored`, which
+    is the rule that judges the `.gitignore` itself.
+    """
+    local_paths = sorted(
+        tuple(index.claude_settings_local_paths) + tuple(index.claude_local_md_paths),
+        key=lambda p: p.as_posix(),
+    )
+    gitignore_lines = index.facts.gitignore_lines if index.facts is not None else ()
+    unprotected = [
+        path for path in local_paths
+        if not any(_gitignore_line_covers(line, path.as_posix()) for line in gitignore_lines)
+    ]
+    if not unprotected:
+        return 1.0, []
+    diags: list[tuple[PurePosixPath, Diagnostic]] = []
+    for path in unprotected:
+        diags.append((path, Diagnostic(
+            rule_id="safety.local-files.not-committed", severity=Severity.ERROR,
+            message=f"{path.as_posix()} is a personal local file, is present in the working "
+                    f"tree, and no .gitignore entry covers it; remove it from version control "
+                    f"and gitignore it.",
+        )))
+    return 0.0, diags
 
 
 @rule(

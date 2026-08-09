@@ -52,6 +52,45 @@ def test_not_committed_fires_on_committed_fixture():
     assert [str(p) for p, _ in diags] == [".claude/settings.local.json"]
 
 
+def test_not_committed_passes_when_gitignore_covers_the_local_file(tmp_path):
+    """The analyzer reads the working tree, not the git index, so a present
+    file is not evidence of a committed one. A repository that did exactly what
+    the cited spec sentence prescribes — gitignore the file — was getting this
+    rule's ERROR for it, and an ERROR caps the grade."""
+    index = _repo(tmp_path, {
+        "CLAUDE.md": "# Memory\n",
+        "CLAUDE.local.md": "# Personal\n",
+        ".claude/settings.local.json": "{}\n",
+        ".gitignore": "CLAUDE.local.md\n.claude/settings.local.json\n",
+    })
+    sat, diags = safety.check_local_files_not_committed(index)
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_not_committed_flags_only_the_local_file_gitignore_misses(tmp_path):
+    index = _repo(tmp_path, {
+        "CLAUDE.md": "# Memory\n",
+        "CLAUDE.local.md": "# Personal\n",
+        ".claude/settings.local.json": "{}\n",
+        ".gitignore": "CLAUDE.local.md\n",
+    })
+    sat, diags = safety.check_local_files_not_committed(index)
+    assert sat == 0.0
+    assert [str(p) for p, _ in diags] == [".claude/settings.local.json"]
+
+
+def test_not_committed_does_not_count_a_negated_gitignore_pattern_as_coverage(tmp_path):
+    index = _repo(tmp_path, {
+        "CLAUDE.md": "# Memory\n",
+        "CLAUDE.local.md": "# Personal\n",
+        ".gitignore": "!CLAUDE.local.md\n",
+    })
+    sat, diags = safety.check_local_files_not_committed(index)
+    assert sat == 0.0
+    assert [str(p) for p, _ in diags] == ["CLAUDE.local.md"]
+
+
 # --- safety.local-files.gitignored -------------------------------------------
 
 

@@ -36,6 +36,7 @@ from pathlib import Path, PurePosixPath
 from airx import config, fs, markdown as md
 from airx.discovery import ArtifactIndex
 from airx.model import Applicability, Diagnostic, ParsedDocument, Pillar, RuleSource, Severity
+from airx.rules.fields import classify_unknown_fields, extensions_message, typo_message
 from airx.rules.registry import RuleScope, rule
 from airx.tokenizer import estimate_tokens
 
@@ -825,18 +826,32 @@ def check_coherence(doc: ParsedDocument):
     id="skills.frontmatter.unknown-fields", pillar=Pillar.SKILLS, scope=RuleScope.SKILL,
     applicability=Applicability.QUALITY, weight=2, severity=Severity.WARNING,
     source=RuleSource.ADVISORY, doc_url="https://agentskills.io/specification#frontmatter",
-    summary="Frontmatter has no fields outside the known SKILL.md schema.",
-    why="Unknown fields are silently ignored by loaders, hiding typos of meaningful fields.",
-    fix="Remove or rename the fields to match the documented SKILL.md schema.",
+    summary="Frontmatter misspells no field of the known SKILL.md schema.",
+    why="A misspelled frontmatter field is silently ignored by loaders, so the value its author "
+        "wrote never reaches the skill.",
+    fix="Correct any frontmatter field that misspells a documented SKILL.md field.",
     effort="mechanical",
 )
 def check_unknown_fields(doc: ParsedDocument):
-    unknown = [f for f in doc.frontmatter if f not in config.KNOWN_FRONTMATTER_FIELDS]
-    if not unknown:
+    """Scored on the typos only — see `airx.rules.fields` for why extension
+    keys are reported without being counted against the skill."""
+    verdict = classify_unknown_fields(doc.frontmatter, config.KNOWN_FRONTMATTER_FIELDS)
+    if not verdict:
         return 1.0, []
-    diags = [Diagnostic(rule_id="skills.frontmatter.unknown-fields", severity=Severity.WARNING,
-                         message=f"Unknown frontmatter field '{f}'.") for f in sorted(unknown)]
-    return 0.0, diags
+    diags = [
+        Diagnostic(
+            rule_id="skills.frontmatter.unknown-fields", severity=Severity.WARNING,
+            message=typo_message(field, suggestion), line=_field_line(doc.raw_text, field),
+        )
+        for field, suggestion in verdict.typos
+    ]
+    if verdict.extensions:
+        diags.append(Diagnostic(
+            rule_id="skills.frontmatter.unknown-fields", severity=Severity.INFO,
+            message=extensions_message(verdict.extensions, "SKILL.md"),
+            line=_field_line(doc.raw_text, verdict.extensions[0]),
+        ))
+    return (0.0 if verdict.typos else 1.0), diags
 
 
 @rule(
@@ -1020,9 +1035,9 @@ def check_bloat_base64(doc: ParsedDocument):
     applicability=Applicability.QUALITY, weight=4, severity=Severity.INFO,
     source=RuleSource.ADVISORY, doc_url="https://agentskills.io/specification#progressive-disclosure",
     summary=f"A body over {config.DISCLOSURE_BODY_LINES} lines splits detail into a sibling "
-            f"references/ or scripts/ directory.",
+            f"bundle directory (references/, scripts/, or another of the skill's own naming).",
     why="A very long body loaded all at once defeats progressive disclosure and floods the context window.",
-    fix="Split detail into a references/ or scripts/ directory next to SKILL.md and link to it from the body.",
+    fix="Split detail into a subdirectory next to SKILL.md (references/, scripts/, ...) and link to it from the body.",
     effort="authoring",
 )
 def check_disclosure_used(doc: ParsedDocument, index: ArtifactIndex):
@@ -1037,22 +1052,33 @@ def check_disclosure_used(doc: ParsedDocument, index: ArtifactIndex):
         ).parent
     except ValueError:  # pragma: no cover - a skill doc outside its own root
         return None
-    # Answered from the listing, not the disk. A `references/` directory whose
-    # files fall outside a fetch budget is still a `references/` directory —
-    # and those files are the first thing a constrained fetch drops, so a
-    # filesystem probe would accuse exactly the skills that did this right.
-    # `RepoTree.resolves` records only directories that hold a visible file, so
-    # an empty sibling still does not count as disclosure.
-    has_sibling = any(
-        index.tree.resolves(f"{skill_dir.as_posix()}/{name}")
-        for name in ("references", "scripts")
+    if not skill_dir.parts:
+        # A SKILL.md at the repository root has no directory of its own, so
+        # every top-level directory would read as its bundle. Nothing to judge.
+        return None
+    # Answered from the listing, not the disk. A bundle directory whose files
+    # fall outside a fetch budget is still a bundle directory — and those files
+    # are the first thing a constrained fetch drops, so a filesystem probe would
+    # accuse exactly the skills that did this right.
+    #
+    # Any sibling directory counts, not just `references/` and `scripts/`. The
+    # question this rule asks is whether detail was split out of the body, and
+    # `templates/`, `assets/`, `examples/`, `data/` answer it exactly as well;
+    # the spec names `references/` and `scripts/` as its examples, not as an
+    # exhaustive list of permitted names. Insisting on the two names reported
+    # skills that had done the splitting under a domain-appropriate name.
+    depth = len(skill_dir.parts)
+    has_sibling_dir = any(
+        len(f.parts) > depth + 1 and f.parts[:depth] == skill_dir.parts
+        for f in index.tree.files
     )
-    if has_sibling:
+    if has_sibling_dir:
         return 1.0, []
     return 0.0, [Diagnostic(
         rule_id="skills.disclosure.used", severity=Severity.INFO,
-        message=f"Body is {body_lines} lines (over {config.DISCLOSURE_BODY_LINES}) with no sibling "
-                f"'references/' or 'scripts/' directory; split detail out for progressive disclosure.",
+        message=f"Body is {body_lines} lines (over {config.DISCLOSURE_BODY_LINES}) and the skill "
+                f"directory holds no subdirectory (e.g. 'references/', 'scripts/') to split "
+                f"detail into; split detail out for progressive disclosure.",
     )]
 
 
