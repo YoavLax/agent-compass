@@ -4,6 +4,10 @@ Discovery walks the sorted file list once, classifies each path against the
 declarative patterns in `airx.patterns`, parses what it can (Markdown via the
 frontmatter parser, JSON artifacts via `json.loads`), and records parse
 failures as data rather than raising — rules report them as findings.
+
+JSON under `.vscode/` goes through `airx.jsonc` first, because VS Code
+documents those files as JSON-with-comments. Everything else is parsed
+strictly.
 """
 from __future__ import annotations
 
@@ -13,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from airx.fs import RepoTree
+from airx.jsonc import strip_jsonc
 from airx.model import Artifact, ArtifactKind, ParseError, ParsedDocument, Platform
 from airx.parser import parse as parse_document
 from airx.patterns import classify
@@ -24,6 +29,18 @@ _JSON_KINDS = frozenset({
     ArtifactKind.CLAUDE_SETTINGS,
     ArtifactKind.CLAUDE_SETTINGS_LOCAL,
 })
+
+# The one directory whose JSON is documented as JSON-with-comments. VS Code
+# reads `.vscode/*.json` in its "JSON with Comments" mode, which permits `//`
+# and `/* */` comments and trailing commas, so a file using them is correct and
+# must not be reported as a syntax error. Every other JSON artifact is parsed
+# strictly, because strictness is what *their* tools document — see the module
+# docstring of `airx.jsonc` for both citations.
+_JSONC_DIR = ".vscode"
+
+
+def _is_jsonc(rel: PurePosixPath) -> bool:
+    return _JSONC_DIR in rel.parts
 
 # Kinds tracked by path only — their contents are never parsed (personal files
 # whose mere presence in the tree is what rules care about, or a workflow YAML
@@ -132,7 +149,10 @@ def _make_artifact(
         json_data: Any | None = None
         parse_error: str | None = None
         try:
-            json_data = json.loads(abs_path.read_text(encoding="utf-8-sig"))
+            text = abs_path.read_text(encoding="utf-8-sig")
+            if _is_jsonc(rel):
+                text = strip_jsonc(text)
+            json_data = json.loads(text)
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             parse_error = _error_text(exc)
         return Artifact(kind=kind, rel_path=rel, platform=platform,
