@@ -14,6 +14,35 @@ in [`plan-v3-codecompass.md`](plan-v3-codecompass.md). The scoring pipeline,
 report schema, and determinism contract are untouched — ingest happens before
 the pipeline, exactly like the CLI's clone path.
 
+### Changed — licensing
+- **The license is now the [PolyForm Noncommercial License 1.0.0](LICENSE)**
+  for every version published after commit `a592f6c`. Any noncommercial purpose stays permitted —
+  personal use, study, research, hobby projects, and use inside charities,
+  schools, universities, public research bodies, and government institutions,
+  whatever their funding. Commercial use now requires a separate written
+  license; [`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md) says what counts
+  and how to ask. Copyright is recorded as **Yoav Lax and Bechor Simhaev**,
+  matching what `README.md` already stated.
+
+  This is a source-available license, not an open-source one: the Open Source
+  Definition §6 forbids restricting a field of use, so the project can no
+  longer be described as open source.
+- **Everything published up to and including `a592f6c` remains MIT.** That
+  grant cannot be withdrawn and is not being withdrawn; the text is preserved
+  verbatim in [`LICENSE-MIT`](LICENSE-MIT).
+- **Added [`NOTICE`](NOTICE)** — the attribution MIT requires for the
+  AgentEval code vendored into `src/airx/config.py` and
+  `src/airx/rules/skills.py`. That obligation predates this change and was
+  previously carried only by docstrings and a README paragraph.
+- **Added a [Contributor License Agreement](CLA.md)**, accepted by signing
+  off commits (`git commit -s`). Contributors keep copyright in their work;
+  the agreement grants the rights needed to offer the project under both
+  public and commercial terms.
+- **Metadata now matches**: `pyproject.toml` drops the
+  `License :: OSI Approved :: MIT License` classifier for
+  `License :: Other/Proprietary License`, and `web/package.json` declares the
+  SPDX identifier.
+
 ### Added
 - **Streaming progress** — `POST /api/analyze/stream` returns NDJSON: a
   `{"type":"progress","phase","done","total"}` line as each phase advances, then

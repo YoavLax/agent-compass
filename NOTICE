@@ -1,0 +1,75 @@
+AI Readiness Analyzer (AgentCompass)
+Copyright 2026 Yoav Lax and Bechor Simhaev
+
+This product is licensed under the PolyForm Noncommercial License 1.0.0.
+See LICENSE. Commercial use requires a separate license; see
+LICENSE-COMMERCIAL.md.
+
+This file lists third-party code redistributed in this repository, together
+with the terms it carries. Those terms are not superseded by LICENSE — they
+travel with the code, and this notice must be kept in any redistribution.
+
+==========================================================================
+AgentEval
+==========================================================================
+
+Source:  https://github.com/YoavLax/AgentEval
+License: MIT
+
+Portions of the following files are copied or adapted from AgentEval rather
+than depended on as a package (see the docstring at the top of
+src/airx/config.py for why):
+
+  src/airx/config.py          thresholds ported from agenteval/config.py
+  src/airx/rules/skills.py    SKILL.md rule logic ported from
+                              agenteval/rules/frontmatter.py
+                              agenteval/rules/description.py
+                              agenteval/rules/disclosure.py
+                              agenteval/rules/sizing.py
+                              agenteval/rules/references.py
+                              agenteval/rules/compat.py
+
+--------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 agenteval contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+==========================================================================
+Runtime and build dependencies
+==========================================================================
+
+Dependencies installed from PyPI and npm are not redistributed in this
+repository and are not covered here. Each carries its own license; see
+pyproject.toml and web/package.json for the list, and the respective package
+metadata for terms.
+
+==========================================================================
+Referenced specifications
+==========================================================================
+
+The rule catalog cites, but does not copy, the following published sources.
+Each rule's doc_url identifies which one it rests on, and docs/RULES.md
+publishes the citation for every error-severity rule.
+
+  Agent Skills specification      https://agentskills.io/specification
+  Claude Code documentation       https://code.claude.com/docs
+  GitHub Copilot documentation    https://docs.github.com/copilot
