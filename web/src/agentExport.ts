@@ -57,6 +57,22 @@ export interface AgentFixExport {
   fixes: AgentFixItem[];
 }
 
+export interface FixGroup {
+  /** Best (lowest / most impactful) rank among this rule's fixes. */
+  rank: number;
+  rule_id: string;
+  pillar: string;
+  /** Worst severity across all findings for this rule. */
+  severity: SeverityLevel;
+  effort: string;
+  /** Score points regained if every finding for this rule is fixed. */
+  score_gain: number;
+  /** Representative message (from the highest-ranked finding). */
+  message: string;
+  /** How many individual findings share this rule_id. */
+  count: number;
+}
+
 const SEVERITY_RANK: Record<SeverityLevel, number> = { error: 0, warning: 1, info: 2 };
 
 function roundTo(value: number, decimals = 1): number {
@@ -89,9 +105,55 @@ function buildInstructions(report: Report): string {
   );
 }
 
-/** Joins findings to the remediation plan (by rule_id) and sorts by expected impact. */
-export function buildAgentFixExport(report: Report): AgentFixExport {
-  const { findings, remediation_plan, score, meta } = report;
+/**
+ * Groups an (already rank-sorted) fixes array by rule_id, one card per
+ * distinct recommendation, preserving the best rank/worst severity seen.
+ * Used to render the per-recommendation checkbox list in
+ * ExportSelectionModal.tsx.
+ */
+export function groupFixesByRule(fixes: AgentFixItem[]): FixGroup[] {
+  const groups = new Map<string, FixGroup>();
+  for (const fix of fixes) {
+    const existing = groups.get(fix.rule_id);
+    if (!existing) {
+      groups.set(fix.rule_id, {
+        rank: fix.rank,
+        rule_id: fix.rule_id,
+        pillar: fix.pillar,
+        severity: fix.severity,
+        effort: fix.effort,
+        score_gain: fix.score_gain,
+        message: fix.message,
+        count: 1,
+      });
+      continue;
+    }
+    existing.count += 1;
+    if (SEVERITY_RANK[fix.severity] < SEVERITY_RANK[existing.severity]) {
+      existing.severity = fix.severity;
+    }
+    if (fix.rank < existing.rank) existing.rank = fix.rank;
+  }
+  return Array.from(groups.values()).sort((a, b) => a.rank - b.rank);
+}
+
+/**
+ * Joins findings to the remediation plan (by rule_id) and sorts by expected
+ * impact. When `selectedRuleIds` is provided, only findings/plan entries for
+ * those rule_ids are included (used by the "handoff to your agent" selection
+ * flow); omit it (or pass `null`) to include everything, as before.
+ */
+export function buildAgentFixExport(
+  report: Report,
+  selectedRuleIds?: ReadonlySet<string> | null,
+): AgentFixExport {
+  const { remediation_plan, score, meta } = report;
+  const findings = selectedRuleIds
+    ? report.findings.filter((f) => selectedRuleIds.has(f.rule_id))
+    : report.findings;
+  const relevantPlan = selectedRuleIds
+    ? remediation_plan.filter((entry) => selectedRuleIds.has(entry.rule_id))
+    : remediation_plan;
 
   const planByRule = new Map<string, RemediationEntry>();
   for (const entry of remediation_plan) {
@@ -130,7 +192,7 @@ export function buildAgentFixExport(report: Report): AgentFixExport {
     fix.rank = index + 1;
   });
 
-  const projectedGain = remediation_plan.reduce((sum, entry) => sum + entry.score_gain, 0);
+  const projectedGain = relevantPlan.reduce((sum, entry) => sum + entry.score_gain, 0);
 
   return {
     generator: "AgentCompass",
@@ -162,9 +224,13 @@ function slugify(source: string): string {
   return source.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
 }
 
-/** Builds the export and triggers a browser download of the JSON file. */
-export function downloadAgentFixExport(report: Report): void {
-  const data = buildAgentFixExport(report);
+/**
+ * Builds the export and triggers a browser download of the JSON file.
+ * `selectedRuleIds`, when provided, restricts the export to those rule_ids
+ * (see buildAgentFixExport).
+ */
+export function downloadAgentFixExport(report: Report, selectedRuleIds?: ReadonlySet<string> | null): void {
+  const data = buildAgentFixExport(report, selectedRuleIds);
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);

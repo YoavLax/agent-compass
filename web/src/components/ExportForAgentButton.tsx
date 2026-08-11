@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Report } from "../api";
 import { downloadAgentFixExport } from "../agentExport";
 import { formatScore } from "../format";
+import ExportSelectionModal from "./ExportSelectionModal";
 
 interface ExportForAgentButtonProps {
   report: Report;
@@ -31,10 +32,12 @@ function DownloadIcon() {
  */
 export function ExportForAgentButton({ report }: ExportForAgentButtonProps) {
   const [justExported, setJustExported] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
   const hasFindings = report.findings.length > 0;
 
-  function handleExport() {
-    downloadAgentFixExport(report);
+  function handleHandoff(selectedRuleIds: Set<string>) {
+    downloadAgentFixExport(report, selectedRuleIds);
+    setIsSelecting(false);
     setJustExported(true);
     window.setTimeout(() => setJustExported(false), 2500);
   }
@@ -69,13 +72,20 @@ export function ExportForAgentButton({ report }: ExportForAgentButtonProps) {
       </div>
       <button
         type="button"
-        onClick={handleExport}
+        onClick={() => setIsSelecting(true)}
         disabled={!hasFindings}
         className="focus-ring inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         <DownloadIcon />
         {justExported ? "Exported \u2713" : "Export for your agent"}
       </button>
+      {isSelecting && (
+        <ExportSelectionModal
+          report={report}
+          onClose={() => setIsSelecting(false)}
+          onHandoff={handleHandoff}
+        />
+      )}
     </section>
   );
 }
