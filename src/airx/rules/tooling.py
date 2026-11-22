@@ -387,3 +387,29 @@ def check_scripts_documented(index: ArtifactIndex):
     return 0.0, [(path, Diagnostic(
         rule_id="tooling.scripts.documented", severity=Severity.WARNING, message=message,
     )) for path in index.entrypoint_paths()]
+
+
+@rule(
+    id="tooling.aider-config.present", pillar=Pillar.TOOLING, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.INFO,
+    source=RuleSource.ADVISORY,
+    doc_url="https://aider.chat/docs/config/aider_conf.html",
+    summary="An Aider config or conventions file (.aider.conf.yml or "
+            "CONVENTIONS.md) exists.",
+    why="Aider is a popular terminal-based AI coding agent; repositories "
+        "already configured for it get no credit or visibility in this "
+        "report without this rule.",
+    fix="Add a .aider.conf.yml (optionally with read: CONVENTIONS.md) or a "
+        "CONVENTIONS.md file with project-specific instructions for Aider.",
+    effort="additive",
+)
+def check_aider_config_present(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    if tree.resolves(".aider.conf.yml") or tree.resolves("CONVENTIONS.md"):
+        return 1.0, []
+    return 0.0, [Diagnostic(
+        rule_id="tooling.aider-config.present", severity=Severity.INFO,
+        message="No .aider.conf.yml or CONVENTIONS.md found.",
+    )]
