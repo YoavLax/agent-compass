@@ -10,7 +10,7 @@ report schema and ruleset (see `plan.md` section 3, determinism guarantee D7).
 
 AgentCompass — your compass for AI-agent-ready repos: a web UI over the analyzer.
 Paste a public GitHub URL, get the full report, no clone. Design and rationale
-in [`plan-v3-codecompass.md`](plan-v3-codecompass.md). The scoring pipeline,
+in [`plan-v3-codecompass.md`](docs/plan-v3-codecompass.md). The scoring pipeline,
 report schema, and determinism contract are untouched — ingest happens before
 the pipeline, exactly like the CLI's clone path.
 
@@ -167,7 +167,7 @@ the pipeline, exactly like the CLI's clone path.
 
 Full-catalog release: every pillar scored, multi-platform sub-scores, waivers,
 four report formats, and three new subcommands. Design and rationale in
-[`plan-v2-fable.md`](plan-v2-fable.md); report `schema_version` and
+[`plan-v2-fable.md`](docs/plan-v2-fable.md); report `schema_version` and
 `ruleset_version` are both `0.2.0`. All v0.1.0 JSON keys are preserved — v0.2.0
 only adds keys.
 

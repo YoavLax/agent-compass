@@ -7,7 +7,7 @@ analyzer that scores how ready a repository is for AI coding agents (GitHub
 Copilot / Claude Code). Point it at a repo and it returns a reproducible
 score, a letter grade, and a ranked list of concrete fixes — same commit in,
 byte-identical report out, every time. See [`README.md`](../README.md) and
-[`plan.md`](../plan.md) for the full design.
+[`plan.md`](../docs/plan.md) for the full design.
 
 ## Tech stack
 

@@ -1015,7 +1015,7 @@ waivers:
 **GitHub Action** (composite, mirrors AgentEval's ergonomics):
 
 ```yaml
-- uses: YoavLax/AI-Repo-Analyzer@v1
+- uses: YoavLax/agent-compass@v1
   with:
     path: .
     profile: standard

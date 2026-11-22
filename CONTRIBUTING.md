@@ -1,9 +1,9 @@
 # Contributing to AI Readiness Analyzer
 
 Thanks for your interest in contributing. This project is early (pre-1.0). The
-original design lives in [`plan.md`](plan.md) (read §3, the determinism
+original design lives in [`plan.md`](docs/plan.md) (read §3, the determinism
 contract, first) and the v0.2.0 architecture in
-[`plan-v2-fable.md`](plan-v2-fable.md). The generated rule catalog is
+[`plan-v2-fable.md`](docs/plan-v2-fable.md). The generated rule catalog is
 [`docs/RULES.md`](docs/RULES.md).
 
 ## Development setup

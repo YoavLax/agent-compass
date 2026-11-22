@@ -10,14 +10,50 @@ out, every time.
 [![CI](https://github.com/YoavLax/agent-compass/actions/workflows/ci.yml/badge.svg)](https://github.com/YoavLax/agent-compass/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![Score your repo](https://img.shields.io/badge/AI%20readiness-score%20your%20repo-7057ff.svg)](https://github.com/YoavLax/agent-compass)
+
+```
+AI Readiness Analyzer — /path/to/some/repo
+
+Overall score: 61.1/100   Grade: D
+Platforms:     copilot 62.5   claude 61.1   parity delta 1.4
+
+Pillars:
+  foundation      86.4%   (presence 100.0%, quality  77.3%, weight 20, 9 rules)
+  skills          99.8%   (presence 100.0%, quality  99.6%, weight 15, 37 rules)
+  ...
+
+Findings (20):
+  [error  ] skills.name.dirname-match   .github/skills/deploy/SKILL.md
+            Name 'deployer' does not match parent directory 'deploy'. VS Code/Copilot silently fails to load this skill.
+
+Top fixes (estimated score gain):
+  1. +4.8  [additive      ] verify.test-command.documented
+     Document the repository's test command in an entry point so agents can verify their work.
+```
+
+### Add it to CI in 5 lines
+
+```yaml
+- uses: actions/checkout@v4
+- uses: YoavLax/agent-compass@v1
+  with:
+    min-score: 70
+    fail-on: error
+```
+
+No local setup needed to try it first: paste any public GitHub URL into
+**[AgentCompass](https://agentcompass.ashymeadow-b5411f47.eastus.azurecontainerapps.io/)**,
+the hosted, clone-free web UI, or run `docker compose up` to host it yourself
+— see [Quickstart](#quickstart) below.
 
 > **Status: v0.3.0 "AgentCompass" — pre-1.0.** All eight scoring pillars are
 > live with a catalog of 104 rules, platform sub-scores, waivers,
 > terminal/JSON/Markdown/SARIF reports, and a clone-free web UI. The original
-> design document is [`plan.md`](plan.md); the v0.2.0 refactor plan is
-> [`plan-v2-fable.md`](plan-v2-fable.md) and the web-app plan is
-> [`plan-v3-codecompass.md`](plan-v3-codecompass.md); the full generated rule
-> catalog is [`docs/RULES.md`](docs/RULES.md). See
+> design document is [`plan.md`](docs/plan.md); the v0.2.0 refactor plan is
+> [`plan-v2-fable.md`](docs/plan-v2-fable.md) and the web-app plan is
+> [`plan-v3-codecompass.md`](docs/plan-v3-codecompass.md); the full generated
+> rule catalog is [`docs/RULES.md`](docs/RULES.md). See
 > [`CHANGELOG.md`](CHANGELOG.md) for exactly what's built.
 
 ---
@@ -129,6 +165,9 @@ reproducible.
 
 ## AgentCompass — the web UI
 
+**[Try it hosted: agentcompass.ashymeadow-b5411f47.eastus.azurecontainerapps.io](https://agentcompass.ashymeadow-b5411f47.eastus.azurecontainerapps.io/)**
+— no install, no signup, no clone.
+
 **AgentCompass** — your compass for AI-agent-ready repos. Paste a public GitHub
 repository URL into the browser, get the full report: overall score and grade,
 Copilot/Claude platform bars, per-pillar breakdown, filterable findings, and
@@ -221,7 +260,7 @@ path → fs.scan            deterministic, symlink-free traversal
 
 Every rule is a pure function of its input. There are no model calls, no
 network access, and no wall-clock or environment dependence anywhere in the
-scoring path — see [`plan.md`](plan.md) §3 for the determinism contract and
+scoring path — see [`plan.md`](docs/plan.md) §3 for the determinism contract and
 `tests/test_determinism.py` for its enforcement.
 
 ## The scoring model, briefly
@@ -302,7 +341,7 @@ the composite action installs `ai-repo-analyzer` straight from the pinned
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: YoavLax/AI-Repo-Analyzer@v1
+- uses: YoavLax/agent-compass@v1
   with:
     path: .              # default: "."
     profile: standard    # minimal | standard | enterprise
@@ -320,7 +359,7 @@ a failing test would.
 ## Not yet implemented
 
 `airx fix`, duplication detection, and nested-monorepo aggregation — see
-[`plan.md`](plan.md) §12 and [`plan-v2-fable.md`](plan-v2-fable.md) §1 for
+[`plan.md`](docs/plan.md) §12 and [`plan-v2-fable.md`](docs/plan-v2-fable.md) §1 for
 sequencing.
 
 ## Contributing
@@ -384,7 +423,7 @@ catalog is derived from the published
 [Agent Skills specification](https://agentskills.io), the
 [Claude Code documentation](https://code.claude.com/docs/en/best-practices),
 and [GitHub Copilot's custom-instructions guidance](https://github.blog/ai-and-ml/github-copilot/5-tips-for-writing-better-custom-instructions-for-copilot/)
-— see [`plan.md`](plan.md) §15 for the full bibliography.
+— see [`plan.md`](docs/plan.md) §15 for the full bibliography.
 
 ## License
 
