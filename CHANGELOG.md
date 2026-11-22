@@ -6,13 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/) for its
 report schema and ruleset (see `plan.md` section 3, determinism guarantee D7).
 
-## [Unreleased] — 0.3.0 — "AgentCompass"
+## [Unreleased]
+
+## [1.0.0] — 2026-11-22 — "AgentCompass"
 
 AgentCompass — your compass for AI-agent-ready repos: a web UI over the analyzer.
 Paste a public GitHub URL, get the full report, no clone. Design and rationale
 in [`plan-v3-codecompass.md`](docs/plan-v3-codecompass.md). The scoring pipeline,
 report schema, and determinism contract are untouched — ingest happens before
-the pipeline, exactly like the CLI's clone path.
+the pipeline, exactly like the CLI's clone path. First stable release: the
+GitHub Action, CLI, and web UI are all considered production-ready as of this
+tag.
 
 ### Changed
 - **Relicensed under MIT**, replacing PolyForm Noncommercial 1.0.0, and

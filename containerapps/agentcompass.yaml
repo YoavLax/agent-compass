@@ -41,7 +41,7 @@ properties:
       - name: agentcompass
         # Pin an explicit tag — never `:latest` — so rollouts stay
         # reproducible and revision rollback actually rolls back the image.
-        image: agentcompassacr.azurecr.io/agentcompass:0.3.0
+        image: agentcompassacr.azurecr.io/agentcompass:1.0.0
         env:
           - name: STATIC_DIR
             value: /opt/agentcompass/static

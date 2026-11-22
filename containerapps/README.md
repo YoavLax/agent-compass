@@ -76,8 +76,8 @@ stricter SLA requirements than this app has today.)
 
 ```sh
 az acr login --name agentcompassacr
-docker build -t agentcompassacr.azurecr.io/agentcompass:0.3.0 .
-docker push agentcompassacr.azurecr.io/agentcompass:0.3.0
+docker build -t agentcompassacr.azurecr.io/agentcompass:1.0.0 .
+docker push agentcompassacr.azurecr.io/agentcompass:1.0.0
 ```
 
 ## 4. Fill in the manifest and create the app

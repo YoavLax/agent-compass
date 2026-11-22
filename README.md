@@ -47,7 +47,7 @@ No local setup needed to try it first: paste any public GitHub URL into
 the hosted, clone-free web UI, or run `docker compose up` to host it yourself
 — see [Quickstart](#quickstart) below.
 
-> **Status: v0.3.0 "AgentCompass" — pre-1.0.** All eight scoring pillars are
+> **Status: v1.0.0 "AgentCompass."** All eight scoring pillars are
 > live with a catalog of 104 rules, platform sub-scores, waivers,
 > terminal/JSON/Markdown/SARIF reports, and a clone-free web UI. The original
 > design document is [`plan.md`](docs/plan.md); the v0.2.0 refactor plan is

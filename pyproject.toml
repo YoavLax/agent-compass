@@ -1,6 +1,6 @@
 [project]
 name = "ai-repo-analyzer"
-version = "0.3.0"
+version = "1.0.0"
 description = "Deterministic AI-readiness scorer for GitHub Copilot and Claude Code repository configuration."
 readme = "README.md"
 license = { text = "MIT" }

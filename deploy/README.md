@@ -50,12 +50,12 @@ escapes are rejected. Local-path mode stays disabled unless
 Build and push the image to a registry your cluster can pull from, then:
 
 ```sh
-docker build -t registry.example.com/agentcompass:0.3.0 .
-docker push registry.example.com/agentcompass:0.3.0
+docker build -t registry.example.com/agentcompass:1.0.0 .
+docker push registry.example.com/agentcompass:1.0.0
 
 helm install agentcompass deploy/helm/agentcompass \
   --set image.repository=registry.example.com/agentcompass \
-  --set image.tag=0.3.0
+  --set image.tag=1.0.0
 ```
 
 The chart deploys 2 replicas (ClusterIP service on port 80 → container 8080),
@@ -72,7 +72,7 @@ kubectl create secret generic agentcompass-github \
 
 helm upgrade --install agentcompass deploy/helm/agentcompass \
   --set image.repository=registry.example.com/agentcompass \
-  --set image.tag=0.3.0 \
+  --set image.tag=1.0.0 \
   --set github.tokenSecretName=agentcompass-github
 ```
 
