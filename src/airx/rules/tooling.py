@@ -387,3 +387,29 @@ def check_scripts_documented(index: ArtifactIndex):
     return 0.0, [(path, Diagnostic(
         rule_id="tooling.scripts.documented", severity=Severity.WARNING, message=message,
     )) for path in index.entrypoint_paths()]
+
+
+@rule(
+    id="tooling.cursor-rules.present", pillar=Pillar.TOOLING, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.INFO,
+    source=RuleSource.ADVISORY,
+    doc_url="https://docs.cursor.com/context/rules",
+    summary="A Cursor rules file/directory (.cursor/rules/*.mdc or legacy "
+            ".cursorrules) exists.",
+    why="Cursor is a widely used AI code editor; repositories already "
+        "configured for it get no credit or visibility in this report "
+        "without this rule.",
+    fix="Add .cursor/rules/*.mdc (or a legacy .cursorrules file) with "
+        "project-specific instructions for Cursor.",
+    effort="additive",
+)
+def check_cursor_rules_present(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    if tree.resolves(".cursor/rules") or tree.resolves(".cursorrules"):
+        return 1.0, []
+    return 0.0, [Diagnostic(
+        rule_id="tooling.cursor-rules.present", severity=Severity.INFO,
+        message="No .cursor/rules/ directory or .cursorrules file found.",
+    )]
