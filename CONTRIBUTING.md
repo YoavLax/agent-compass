@@ -74,7 +74,11 @@ someone's report.
 Rules are pure functions registered with the `@rule(...)` decorator in
 `src/airx/rules/registry.py`. There is one module per pillar under
 `src/airx/rules/` (`foundation`, `quality`, `scoping`, `skills`, `agents`,
-`verification`, `tooling`, `safety`):
+`verification`, `tooling`, `safety`). For a concrete, start-to-finish example
+of adding one simple presence rule — the shape every `good first issue` on
+the issue tracker wants — see
+[`docs/CONTRIBUTING_A_RULE.md`](docs/CONTRIBUTING_A_RULE.md). The rest of
+this section is the full reference:
 
 - **`RuleScope.SKILL`** rules run once per matching file (e.g. every
   `SKILL.md`) and are averaged across files.
