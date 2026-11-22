@@ -8,7 +8,7 @@ zero model calls in the scoring path. Same commit in, byte-identical report
 out, every time.
 
 [![CI](https://github.com/YoavLax/agent-compass/actions/workflows/ci.yml/badge.svg)](https://github.com/YoavLax/agent-compass/actions/workflows/ci.yml)
-[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
 > **Status: v0.3.0 "AgentCompass" — pre-1.0.** All eight scoring pillars are
@@ -388,14 +388,4 @@ and [GitHub Copilot's custom-instructions guidance](https://github.blog/ai-and-m
 
 ## License
 
-[PolyForm Noncommercial License 1.0.0](LICENSE) © 2026 Yoav Lax, Bechor Simhaev
-
-Free for any noncommercial purpose: personal use, study, research, hobby
-projects, and use inside charities, schools, universities, public research
-bodies, and government institutions. Forking, modifying, and contributing
-are unaffected.
-
-**Commercial use requires a separate license** from the copyright holders.
-
-Contributions are covered by the [Contributor License Agreement](CLA.md),
-accepted by signing off your commits (`git commit -s`).
+[MIT](LICENSE) © 2026 Yoav Lax, Bechor Simhaev

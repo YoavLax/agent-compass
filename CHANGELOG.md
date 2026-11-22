@@ -14,6 +14,12 @@ in [`plan-v3-codecompass.md`](plan-v3-codecompass.md). The scoring pipeline,
 report schema, and determinism contract are untouched — ingest happens before
 the pipeline, exactly like the CLI's clone path.
 
+### Changed
+- **Relicensed under MIT**, replacing PolyForm Noncommercial 1.0.0, and
+  dropped the Contributor License Agreement / commit-signoff requirement
+  introduced below. The project is now fully open source with no
+  commercial-use restriction and no CLA to sign before contributing.
+
 ### Fixed
 - **`.vscode/*.json` is parsed as JSON with comments** (new `airx.jsonc`).
   `tooling.mcp.valid` reported `microsoft/vscode-copilot-chat`'s

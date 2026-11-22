@@ -3,7 +3,7 @@ name = "ai-repo-analyzer"
 version = "0.3.0"
 description = "Deterministic AI-readiness scorer for GitHub Copilot and Claude Code repository configuration."
 readme = "README.md"
-license = { text = "PolyForm-Noncommercial-1.0.0" }
+license = { text = "MIT" }
 authors = [
     { name = "Yoav Lax", email = "yoavfax@gmail.com" },
     { name = "Bechor Simhaev" },
@@ -17,7 +17,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",

@@ -6,29 +6,6 @@ contract, first) and the v0.2.0 architecture in
 [`plan-v2-fable.md`](plan-v2-fable.md). The generated rule catalog is
 [`docs/RULES.md`](docs/RULES.md).
 
-## Before your first pull request: sign off your commits
-
-The project is offered to the public under the
-[PolyForm Noncommercial License 1.0.0](LICENSE) and to commercial users
-under separate terms. Offering it both ways requires a rights grant on
-record from everyone who contributes to it, so contributions are covered by
-the [Contributor License Agreement](CLA.md).
-
-Agreeing to it takes one flag:
-
-```bash
-git commit -s -m "your message"
-```
-
-`-s` appends a `Signed-off-by:` line, which certifies that you have read
-[`CLA.md`](CLA.md) and accept it for that commit. Use your real name and an
-email address attached to your GitHub account.
-
-**You keep the copyright in your work.** You are granting a license, not
-transferring ownership, and you stay free to use or relicense your own
-contribution anywhere else. If your employer has rights to code you write,
-read §6 of the agreement before contributing.
-
 ## Development setup
 
 ```bash
@@ -201,7 +178,6 @@ change that breaks this check will not be merged.
 
 ## Pull requests
 
-- Sign off every commit (`git commit -s`) — see the CLA section above.
 - Keep changes focused; unrelated refactors make review harder.
 - Update `plan.md` if you change the scoring model, rule catalog, or resolve
   one of the open questions in §14.
