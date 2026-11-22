@@ -275,3 +275,19 @@ def test_scripts_documented_not_applicable_with_few_scripts(tmp_path):
 def test_scripts_documented_not_applicable_without_entrypoint(tmp_path):
     _write(tmp_path, "package.json", _PKG_THREE_SCRIPTS)
     assert rules.check_scripts_documented(_index(tmp_path)) is None
+
+
+# --- tooling.junie-guidelines.present ---------------------------------------
+
+def test_junie_guidelines_present_satisfied(tmp_path):
+    _write(tmp_path, ".junie/guidelines.md", "# guidelines\n")
+    sat, diags = rules.check_junie_guidelines_present(_index(tmp_path))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_junie_guidelines_present_violated(tmp_path):
+    _write(tmp_path, "README.md", "# hello\n")
+    sat, diags = rules.check_junie_guidelines_present(_index(tmp_path))
+    assert sat == 0.0
+    assert diags[0].severity == Severity.INFO
