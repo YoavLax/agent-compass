@@ -428,3 +428,29 @@ def check_injection_surface(index: ArtifactIndex):
     if diags:
         return 0.0, diags
     return 1.0, []
+
+
+@rule(
+    id="safety.ai-exclude.present", pillar=Pillar.SAFETY, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.INFO,
+    source=RuleSource.ADVISORY,
+    doc_url="https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/exclude-content-from-copilot",
+    summary="An AI exclusion file (root .copilotignore or .aiexclude) exists.",
+    why="A repo with sensitive paths (secret templates, internal-only docs, "
+        "generated artifacts) and no AI exclusion file is more exposed to an "
+        "agent reading content it should not — analogous to .gitignore but "
+        "for AI context.",
+    fix="Add a root .copilotignore (or .aiexclude) listing sensitive paths "
+        "that AI agents must never read or suggest from.",
+    effort="additive",
+)
+def check_ai_exclude_present(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    if tree.resolves(".copilotignore") or tree.resolves(".aiexclude"):
+        return 1.0, []
+    return 0.0, [Diagnostic(
+        rule_id="safety.ai-exclude.present", severity=Severity.INFO,
+        message="No .copilotignore or .aiexclude exclusion file found.",
+    )]

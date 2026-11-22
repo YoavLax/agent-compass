@@ -448,3 +448,26 @@ def test_injection_flags_wget_and_iwr_in_skills(tmp_path):
     assert "wget-pipe-shell" in labels
     assert "iwr-pipe-iex" in labels
     assert all(str(p) == ".claude/skills/deploy/SKILL.md" for p, _ in diags)
+
+
+# --- safety.ai-exclude.present ----------------------------------------------
+
+def test_ai_exclude_present_satisfied_by_copilotignore(tmp_path):
+    _repo(tmp_path, {".copilotignore": "secrets/\n"})
+    sat, diags = safety.check_ai_exclude_present(_index(tmp_path))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_ai_exclude_present_satisfied_by_aiexclude(tmp_path):
+    _repo(tmp_path, {".aiexclude": "internal/\n"})
+    sat, diags = safety.check_ai_exclude_present(_index(tmp_path))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_ai_exclude_present_violated(tmp_path):
+    _repo(tmp_path, {"README.md": "# hello\n"})
+    sat, diags = safety.check_ai_exclude_present(_index(tmp_path))
+    assert sat == 0.0
+    assert diags[0].severity == Severity.INFO
