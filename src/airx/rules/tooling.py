@@ -387,3 +387,28 @@ def check_scripts_documented(index: ArtifactIndex):
     return 0.0, [(path, Diagnostic(
         rule_id="tooling.scripts.documented", severity=Severity.WARNING, message=message,
     )) for path in index.entrypoint_paths()]
+
+
+@rule(
+    id="tooling.zed-rules.present", pillar=Pillar.TOOLING, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.INFO,
+    source=RuleSource.ADVISORY,
+    doc_url="https://zed.dev/docs/ai/rules",
+    summary="A Zed editor AI rules file (root .rules) exists.",
+    why="Zed is a widely used AI-native code editor; repositories already "
+        "configured for it get no credit or visibility in this report "
+        "without this rule.",
+    fix="Add a root .rules file with project-specific instructions for "
+        "Zed's AI assistant.",
+    effort="additive",
+)
+def check_zed_rules_present(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    if tree.resolves(".rules"):
+        return 1.0, []
+    return 0.0, [Diagnostic(
+        rule_id="tooling.zed-rules.present", severity=Severity.INFO,
+        message="No root .rules file found.",
+    )]
