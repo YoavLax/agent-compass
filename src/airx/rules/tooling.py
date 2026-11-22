@@ -387,3 +387,29 @@ def check_scripts_documented(index: ArtifactIndex):
     return 0.0, [(path, Diagnostic(
         rule_id="tooling.scripts.documented", severity=Severity.WARNING, message=message,
     )) for path in index.entrypoint_paths()]
+
+
+@rule(
+    id="tooling.windsurf-rules.present", pillar=Pillar.TOOLING, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.INFO,
+    source=RuleSource.ADVISORY,
+    doc_url="https://docs.windsurf.com/windsurf/cascade/memories",
+    summary="A Windsurf rules file (root .windsurfrules or .windsurf/rules.md) "
+            "exists.",
+    why="Windsurf (Codeium) is a widely used AI editor; repositories already "
+        "configured for it get no credit or visibility in this report "
+        "without this rule.",
+    fix="Add a root .windsurfrules file or .windsurf/rules.md with "
+        "project-specific instructions for Windsurf Cascade.",
+    effort="additive",
+)
+def check_windsurf_rules_present(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    if tree.resolves(".windsurfrules") or tree.resolves(".windsurf/rules.md"):
+        return 1.0, []
+    return 0.0, [Diagnostic(
+        rule_id="tooling.windsurf-rules.present", severity=Severity.INFO,
+        message="No .windsurfrules file or .windsurf/rules.md found.",
+    )]
