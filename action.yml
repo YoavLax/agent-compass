@@ -1,7 +1,7 @@
 name: 'AI Readiness Analyzer'
 description: >-
-  Score a repository's AI-agent readiness for GitHub Copilot / Claude Code
-  (skills, instructions, agents, safety) and gate CI on the result.
+  Score a repo's AI-agent readiness for GitHub Copilot & Claude Code —
+  deterministic rules, CI gate.
 author: 'Yoav Lax'
 branding:
   icon: 'check-circle'
