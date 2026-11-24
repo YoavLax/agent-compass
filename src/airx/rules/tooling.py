@@ -387,3 +387,28 @@ def check_scripts_documented(index: ArtifactIndex):
     return 0.0, [(path, Diagnostic(
         rule_id="tooling.scripts.documented", severity=Severity.WARNING, message=message,
     )) for path in index.entrypoint_paths()]
+
+
+@rule(
+    id="tooling.cline-rules.present", pillar=Pillar.TOOLING, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.INFO,
+    source=RuleSource.ADVISORY,
+    doc_url="https://docs.cline.bot/features/cline-rules",
+    summary="A Cline rules file/directory (root .clinerules) exists.",
+    why="Cline is a popular open-source VS Code coding agent; repositories "
+        "already configured for it get no credit or visibility in this "
+        "report without this rule.",
+    fix="Add a root .clinerules file (or a .clinerules/ directory of "
+        "markdown files) with project-specific instructions for Cline.",
+    effort="additive",
+)
+def check_cline_rules_present(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    if tree.resolves(".clinerules"):
+        return 1.0, []
+    return 0.0, [Diagnostic(
+        rule_id="tooling.cline-rules.present", severity=Severity.INFO,
+        message="No .clinerules file or directory found.",
+    )]
