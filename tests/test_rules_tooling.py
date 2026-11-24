@@ -275,3 +275,26 @@ def test_scripts_documented_not_applicable_with_few_scripts(tmp_path):
 def test_scripts_documented_not_applicable_without_entrypoint(tmp_path):
     _write(tmp_path, "package.json", _PKG_THREE_SCRIPTS)
     assert rules.check_scripts_documented(_index(tmp_path)) is None
+
+
+# --- tooling.aider-config.present -------------------------------------------
+
+def test_aider_config_present_satisfied_by_conf(tmp_path):
+    _write(tmp_path, ".aider.conf.yml", "model: gpt-4o\n")
+    sat, diags = rules.check_aider_config_present(_index(tmp_path))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_aider_config_present_satisfied_by_conventions(tmp_path):
+    _write(tmp_path, "CONVENTIONS.md", "# conventions\n")
+    sat, diags = rules.check_aider_config_present(_index(tmp_path))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_aider_config_present_violated(tmp_path):
+    _write(tmp_path, "README.md", "# hello\n")
+    sat, diags = rules.check_aider_config_present(_index(tmp_path))
+    assert sat == 0.0
+    assert diags[0].severity == Severity.INFO
