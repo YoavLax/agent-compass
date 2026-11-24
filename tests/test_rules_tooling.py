@@ -275,3 +275,33 @@ def test_scripts_documented_not_applicable_with_few_scripts(tmp_path):
 def test_scripts_documented_not_applicable_without_entrypoint(tmp_path):
     _write(tmp_path, "package.json", _PKG_THREE_SCRIPTS)
     assert rules.check_scripts_documented(_index(tmp_path)) is None
+
+
+# --- tooling.vscode-legacy-copilot.deprecated -------------------------------
+
+def test_vscode_legacy_copilot_absent_file_is_na(tmp_path):
+    _write(tmp_path, "README.md", "# hello\n")
+    assert rules.check_vscode_legacy_copilot(_index(tmp_path)) is None
+
+
+def test_vscode_legacy_copilot_clean_settings(tmp_path):
+    _write(tmp_path, ".vscode/settings.json", '{"editor.tabSize": 2}\n')
+    sat, diags = rules.check_vscode_legacy_copilot(_index(tmp_path))
+    assert sat == 1.0
+    assert diags == []
+
+
+def test_vscode_legacy_copilot_flags_legacy_keys(tmp_path):
+    _write(tmp_path, ".vscode/settings.json",
+           '{"github.copilot.chat.codeGeneration.instructions": []}\n')
+    sat, diags = rules.check_vscode_legacy_copilot(_index(tmp_path))
+    assert sat == 0.0
+    assert diags[0].severity == Severity.WARNING
+
+
+def test_vscode_legacy_copilot_handles_jsonc_comments(tmp_path):
+    _write(tmp_path, ".vscode/settings.json",
+           '{\n  // a comment\n  "github.copilot.chat.testGeneration.instructions": []\n}\n')
+    sat, diags = rules.check_vscode_legacy_copilot(_index(tmp_path))
+    assert sat == 0.0
+    assert diags[0].severity == Severity.WARNING

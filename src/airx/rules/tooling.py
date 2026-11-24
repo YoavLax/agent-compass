@@ -387,3 +387,61 @@ def check_scripts_documented(index: ArtifactIndex):
     return 0.0, [(path, Diagnostic(
         rule_id="tooling.scripts.documented", severity=Severity.WARNING, message=message,
     )) for path in index.entrypoint_paths()]
+
+
+# VS Code settings keys that carry inline Copilot Chat custom instructions —
+# the pre-.github/copilot-instructions.md mechanism GitHub now describes as
+# superseded by a repository instructions file.
+_LEGACY_COPILOT_INSTRUCTION_KEYS = (
+    "github.copilot.chat.codeGeneration.instructions",
+    "github.copilot.chat.testGeneration.instructions",
+    "github.copilot.chat.reviewSelection.instructions",
+    "github.copilot.chat.edits.codesearch.enabled",
+)
+
+
+@rule(
+    id="tooling.vscode-legacy-copilot.deprecated", pillar=Pillar.TOOLING, scope=RuleScope.REPO,
+    applicability=Applicability.PRESENCE, weight=2, severity=Severity.WARNING,
+    source=RuleSource.ADVISORY,
+    doc_url="https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+    summary="Legacy VS Code inline Copilot instruction settings "
+            "(github.copilot.chat.*.instructions) are present in "
+            ".vscode/settings.json.",
+    why="These per-setting Copilot Chat instruction keys predate "
+        ".github/copilot-instructions.md, which GitHub now documents as the "
+        "way to give Copilot custom instructions. Repos that never migrated "
+        "carry stale, scattered instructions.",
+    fix="Consolidate inline github.copilot.chat.*.instructions from "
+        ".vscode/settings.json into a .github/copilot-instructions.md file.",
+    effort="mechanical",
+)
+def check_vscode_legacy_copilot(index: ArtifactIndex):
+    tree = index.tree
+    if tree is None:
+        return None
+    settings_path = ".vscode/settings.json"
+    if not tree.resolves(settings_path):
+        return None  # N/A: no VS Code settings file to inspect
+    try:
+        raw = (index.root / settings_path).read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return None
+    from airx.jsonc import strip_jsonc
+    import json as _json
+    try:
+        data = _json.loads(strip_jsonc(raw))
+    except (ValueError, TypeError):
+        return None  # unparseable → nothing to judge
+    if not isinstance(data, dict):
+        return None
+    present = sorted(k for k in _LEGACY_COPILOT_INSTRUCTION_KEYS if k in data)
+    if not present:
+        return 1.0, []
+    diags = [Diagnostic(
+        rule_id="tooling.vscode-legacy-copilot.deprecated", severity=Severity.WARNING,
+        message=f"Legacy inline Copilot instruction setting '{key}' in "
+                f".vscode/settings.json; migrate it into "
+                f".github/copilot-instructions.md.",
+    ) for key in present]
+    return 0.0, diags
